@@ -138,9 +138,27 @@ describe('Directive: uiLayout', function () {
       return element;
     }
 
+    function createDataSizedDirective(notation) {
+      element = createDirective(null, '<div ui-layout><header ui-layout-container data-size="' + notation + '"></header><footer ui-layout-container></footer></div>');
+
+      $header = element.children().eq(0)[0];
+      $footer = element.children().eq(2)[0];
+
+      return element;
+    }
+
+
     function testSizeNotation(notation, actualSize) {
       element = createSizedDirective(notation);
+      test(element, notation, actualSize);
+      element.remove();
 
+      element = createDataSizedDirective(notation);
+      test(element, notation, actualSize);
+      element.remove();
+    }
+
+    function test(element, notation, actualSize) {
       layoutBounds = element[0].getBoundingClientRect();
       headerBounds = $header.getBoundingClientRect();
 
@@ -156,7 +174,6 @@ describe('Directive: uiLayout', function () {
         expect(parseFloat($footer.style.top)).toEqual(actualSize + defaultDividerSize);
       }
 
-      element.remove();
     }
 
     describe('when using dummy input', function () {
@@ -199,9 +216,27 @@ describe('Directive: uiLayout', function () {
       return element;
     }
 
+    function createDataSizedDirective(notation) {
+      element = createDirective(null, '<div ui-layout><header ui-layout-container size="1px" data-min-size="' + notation + '"></header><footer ui-layout-container></footer></div>');
+
+      $header = element.children().eq(0)[0];
+      $footer = element.children().eq(2)[0];
+
+      return element;
+    }
+
     function testSizeNotation(notation, minSize) {
       element = createSizedDirective(notation);
+      test(element, notation, minSize);
+      element.remove();
 
+      element = createDataSizedDirective(notation);
+      test(element, notation, minSize);
+      element.remove();
+
+    }
+
+    function test(element, notation, minSize) {
       layoutBounds = element[0].getBoundingClientRect();
       headerBounds = $header.getBoundingClientRect();
 
@@ -216,8 +251,6 @@ describe('Directive: uiLayout', function () {
         expect(parseFloat($footer.style.height)).toEqual(layoutBounds.height - minSize - defaultDividerSize);
         expect(parseFloat($footer.style.top)).toEqual(minSize + defaultDividerSize);
       }
-
-      element.remove();
     }
 
     it('should support percent type', function () {
@@ -249,9 +282,26 @@ describe('Directive: uiLayout', function () {
       return element;
     }
 
+    function createDataSizedDirective(notation) {
+      element = createDirective(null, '<div ui-layout><header ui-layout-container size="100%" data-max-size="' + notation + '"></header><footer ui-layout-container></footer></div>');
+
+      $header = element.children().eq(0)[0];
+      $footer = element.children().eq(2)[0];
+
+      return element;
+    }
+
     function testSizeNotation(notation, maxSize) {
       element = createSizedDirective(notation);
+      test(element, notation, maxSize);
+      element.remove();
 
+      element = createDataSizedDirective(notation);
+      test(element, notation, maxSize);
+      element.remove();
+    }
+
+    function test(element, notation, maxSize) {
       layoutBounds = element[0].getBoundingClientRect();
       headerBounds = $header.getBoundingClientRect();
 
@@ -267,7 +317,6 @@ describe('Directive: uiLayout', function () {
         expect(parseFloat($footer.style.top)).toEqual(maxSize + defaultDividerSize);
       }
 
-      element.remove();
     }
 
     it('should support percent type', function () {
@@ -312,11 +361,18 @@ describe('Directive: uiLayout', function () {
       });
 
       it('should initialise with equal width', function () {
-        var expectedWidth = Math.floor((layoutBounds.width - defaultDividerSize) / 2);
+        var expectedHeaderWidth = Math.floor((layoutBounds.width - defaultDividerSize) / 2),
+          expectedFooterWidth = expectedHeaderWidth;
+
+        if (layoutBounds.width % 2 === 1) {
+          expectedFooterWidth += 1; // "dangling pixel" added to the last autosized container in a layout
+        }
+
+
         expect($header.style.left).toEqual('0px');
-        expect($header.style.width).toEqual(expectedWidth + 'px');
-        expect($footer.style.left).toEqual((expectedWidth + defaultDividerSize) + 'px');
-        expect($footer.style.width).toEqual(expectedWidth + 'px');
+        expect($header.style.width).toEqual(expectedHeaderWidth + 'px');
+        expect($footer.style.left).toEqual((expectedHeaderWidth + defaultDividerSize) + 'px');
+        expect($footer.style.width).toEqual(expectedFooterWidth + 'px');
       });
 
       it('should have a split bar at the middle', function () {
@@ -356,14 +412,27 @@ describe('Directive: uiLayout', function () {
         expect(element).toHaveClass('ui-layout-row');
       });
 
-      it('should initialise with equal height', function () {
-        var firstElemHeight = element.children()[0].getBoundingClientRect().height;
-        for (var i = 0; i < element.children().length; i += 2) {
-          expect(element.children()[i].getBoundingClientRect().height, 'tagName').toEqual(firstElemHeight);
+      it('should initialise with equal height when parent container height has an even value', function () {
+        var parentHeightEven = element[0].getBoundingClientRect().height % 2 === 0;
+        if (parentHeightEven) {
+          var firstElemHeight = element.children()[0].getBoundingClientRect().height;
+          for (var i = 0; i < element.children().length; i += 2) {
+            expect(element.children()[i].getBoundingClientRect().height, 'tagName').toEqual(firstElemHeight);
+          }
+        }
+      });
+
+      it('should initialise with last container height larger by 1px when parent container height has an odd value', function () {
+        var parentHeightOdd = element[0].getBoundingClientRect().height % 2 !== 0;
+        if (parentHeightOdd) {
+          var firstElemHeight = element.children()[0].getBoundingClientRect().height;
+          var lastElementHeight = element.children()[2].getBoundingClientRect().height;
+          expect(lastElementHeight).toEqual(firstElemHeight + 1);
         }
       });
 
       it('should have a split bar at the middle', function () {
+        // not an absolute middle. In case of odd height, last container is larger by 1px (remainder of the rounding down)
         var expectedMiddle = Math.floor((layoutBounds.height - defaultDividerSize) / 2);
         expect($sidebar.style.top).toEqual(expectedMiddle + 'px');
       });
